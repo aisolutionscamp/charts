@@ -1,0 +1,126 @@
+{{- if .Values.redis.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "rag-stack.redis.fullname" . }}
+  labels:
+    {{- include "rag-stack.redis.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "rag-stack.redis.fullname" . }}-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "rag-stack.redis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/redis-configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/redis-secret.yaml") . | sha256sum }}
+      {{- with .Values.redis.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "rag-stack.redis.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "rag-stack.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "rag-stack.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.redis.podSecurityContext | nindent 8 }}
+      containers:
+        - name: redis
+          securityContext:
+            {{- toYaml .Values.redis.securityContext | nindent 12 }}
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" }}
+          command: ["/bin/sh", "/config/start-redis.sh"]
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          {{- if .Values.redis.auth.enabled }}
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rag-stack.redis.secretName" . }}
+                  key: redis-password
+          {{- end }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  {{- if .Values.redis.auth.enabled }}
+                  redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
+                  {{- else }}
+                  redis-cli ping | grep -q PONG
+                  {{- end }}
+            initialDelaySeconds: {{ .Values.redis.livenessProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.redis.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.redis.livenessProbe.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.redis.livenessProbe.failureThreshold | default 3 }}
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  {{- if .Values.redis.auth.enabled }}
+                  redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
+                  {{- else }}
+                  redis-cli ping | grep -q PONG
+                  {{- end }}
+            initialDelaySeconds: {{ .Values.redis.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.redis.readinessProbe.periodSeconds | default 5 }}
+            timeoutSeconds: {{ .Values.redis.readinessProbe.timeoutSeconds | default 3 }}
+            failureThreshold: {{ .Values.redis.readinessProbe.failureThreshold | default 3 }}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "rag-stack.redis.fullname" . }}
+            defaultMode: 0755
+        - name: tmp
+          emptyDir: {}
+        {{- if not .Values.redis.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.redis.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redis.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redis.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.redis.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "rag-stack.redis.selectorLabels" . | nindent 10 }}
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.redis.persistence.storageClass }}
+        storageClassName: {{ .Values.redis.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.persistence.size | default "1Gi" }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,48 @@
+name: Lint Charts
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'charts/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add qdrant https://qdrant.github.io/qdrant-helm
+          helm repo add ollama https://otwld.github.io/ollama-helm
+          helm repo update
+
+      - name: Run chart-testing (lint)
+        run: ct lint --config ct.yaml
+
+      - name: Run helm lint
+        run: |
+          for chart in charts/*/; do
+            echo "Linting $chart"
+            helm dependency build "$chart"
+            helm lint "$chart"
+          done

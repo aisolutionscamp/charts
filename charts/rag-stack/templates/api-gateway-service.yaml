@@ -1,0 +1,17 @@
+{{- if .Values.apiGateway.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rag-stack.apiGateway.fullname" . }}
+  labels:
+    {{- include "rag-stack.apiGateway.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.apiGateway.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.apiGateway.service.port | default 8080 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "rag-stack.apiGateway.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,30 @@
+apiVersion: v2
+name: rag-stack
+description: A production-ready RAG (Retrieval-Augmented Generation) stack with Qdrant, Redis, Embedding Service, and API Gateway
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - rag
+  - ai
+  - ml
+  - vector-database
+  - qdrant
+  - redis
+  - embedding
+  - llm
+home: https://github.com/aisolutionscamp/helm-charts
+sources:
+  - https://github.com/aisolutionscamp/helm-charts
+maintainers:
+  - name: AI Solutions Camp
+    url: https://github.com/aisolutionscamp
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: ai-machine-learning
+
+dependencies:
+  - name: qdrant
+    version: "0.9.*"
+    repository: "https://qdrant.github.io/qdrant-helm"
+    condition: qdrant.enabled

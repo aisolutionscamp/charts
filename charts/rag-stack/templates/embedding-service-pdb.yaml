@@ -1,0 +1,18 @@
+{{- if and .Values.embeddingService.enabled .Values.embeddingService.podDisruptionBudget.enabled -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "rag-stack.embeddingService.fullname" . }}
+  labels:
+    {{- include "rag-stack.embeddingService.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.embeddingService.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.embeddingService.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.embeddingService.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.embeddingService.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "rag-stack.embeddingService.selectorLabels" . | nindent 6 }}
+{{- end }}

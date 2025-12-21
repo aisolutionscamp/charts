@@ -1,0 +1,18 @@
+{{- if .Values.apiGateway.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rag-stack.apiGateway.fullname" . }}
+  labels:
+    {{- include "rag-stack.apiGateway.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.apiGateway.config.logLevel | default "info" | quote }}
+  REQUEST_TIMEOUT: {{ .Values.apiGateway.config.requestTimeout | default 30 | quote }}
+  MAX_BODY_SIZE: {{ .Values.apiGateway.config.maxBodySize | default "10m" | quote }}
+  RATE_LIMIT: {{ .Values.apiGateway.config.rateLimit | default 100 | quote }}
+  QDRANT_HOST: {{ include "rag-stack.qdrantHost" . | quote }}
+  QDRANT_PORT: {{ include "rag-stack.qdrantPort" . | quote }}
+  REDIS_HOST: {{ include "rag-stack.redisHost" . | quote }}
+  REDIS_PORT: {{ include "rag-stack.redisPort" . | quote }}
+  EMBEDDING_SERVICE_URL: "http://{{ include "rag-stack.embeddingService.fullname" . }}:{{ .Values.embeddingService.service.port | default 8080 }}"
+{{- end }}

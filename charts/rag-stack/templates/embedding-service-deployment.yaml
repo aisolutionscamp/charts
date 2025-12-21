@@ -1,0 +1,75 @@
+{{- if .Values.embeddingService.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rag-stack.embeddingService.fullname" . }}
+  labels:
+    {{- include "rag-stack.embeddingService.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.embeddingService.autoscaling.enabled }}
+  replicas: {{ .Values.embeddingService.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "rag-stack.embeddingService.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/embedding-service-configmap.yaml") . | sha256sum }}
+      {{- with .Values.embeddingService.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "rag-stack.embeddingService.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "rag-stack.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "rag-stack.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.embeddingService.podSecurityContext | nindent 8 }}
+      containers:
+        - name: embedding-service
+          securityContext:
+            {{- toYaml .Values.embeddingService.securityContext | nindent 12 }}
+          image: "{{ .Values.embeddingService.image.repository }}:{{ .Values.embeddingService.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.embeddingService.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.embeddingService.service.port | default 8080 }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "rag-stack.embeddingService.fullname" . }}
+            {{- with .Values.embeddingService.envFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            {{- if .Values.redis.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rag-stack.redisSecretName" . }}
+                  key: redis-password
+                  optional: true
+            {{- end }}
+            {{- with .Values.embeddingService.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.embeddingService.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.embeddingService.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.embeddingService.resources | nindent 12 }}
+      {{- with .Values.embeddingService.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.embeddingService.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.embeddingService.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

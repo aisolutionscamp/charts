@@ -1,0 +1,75 @@
+================================================================================
+  RAG Stack has been deployed successfully!
+================================================================================
+
+{{- if .Values.qdrant.enabled }}
+
+QDRANT (Vector Database):
+  Access Qdrant internally at:
+    Host: {{ .Release.Name }}-qdrant
+    HTTP Port: {{ .Values.qdrant.service.port | default 6333 }}
+    gRPC Port: {{ .Values.qdrant.service.grpcPort | default 6334 }}
+
+  To port-forward Qdrant dashboard:
+    kubectl port-forward svc/{{ .Release.Name }}-qdrant {{ .Values.qdrant.service.port | default 6333 }}:{{ .Values.qdrant.service.port | default 6333 }} -n {{ .Release.Namespace }}
+    Then open: http://localhost:{{ .Values.qdrant.service.port | default 6333 }}/dashboard
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+
+REDIS (Caching - Official Redis Image):
+  Access Redis internally at:
+    Host: {{ include "rag-stack.redis.fullname" . }}
+    Port: 6379
+
+  {{- if .Values.redis.auth.enabled }}
+  To get the Redis password:
+    kubectl get secret {{ include "rag-stack.redis.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath="{.data.redis-password}" | base64 -d
+  {{- end }}
+
+  To connect via redis-cli:
+    kubectl exec -it {{ include "rag-stack.redis.fullname" . }}-0 -n {{ .Release.Namespace }} -- redis-cli{{- if .Values.redis.auth.enabled }} -a $(kubectl get secret {{ include "rag-stack.redis.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath="{.data.redis-password}" | base64 -d){{- end }}
+{{- end }}
+
+{{- if .Values.embeddingService.enabled }}
+
+EMBEDDING SERVICE:
+  Service URL: http://{{ include "rag-stack.embeddingService.fullname" . }}:{{ .Values.embeddingService.service.port | default 8080 }}
+  Model: {{ .Values.embeddingService.config.model | default "sentence-transformers/all-MiniLM-L6-v2" }}
+
+  To port-forward the Embedding Service:
+    kubectl port-forward svc/{{ include "rag-stack.embeddingService.fullname" . }} 8080:{{ .Values.embeddingService.service.port | default 8080 }} -n {{ .Release.Namespace }}
+{{- end }}
+
+{{- if .Values.apiGateway.enabled }}
+
+API GATEWAY:
+  Service URL: http://{{ include "rag-stack.apiGateway.fullname" . }}:{{ .Values.apiGateway.service.port | default 8080 }}
+
+  To port-forward the API Gateway:
+    kubectl port-forward svc/{{ include "rag-stack.apiGateway.fullname" . }} 8080:{{ .Values.apiGateway.service.port | default 8080 }} -n {{ .Release.Namespace }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+INGRESS:
+  The RAG Stack is accessible via Ingress at:
+  {{- range .Values.ingress.hosts }}
+    - http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+  {{- end }}
+{{- end }}
+
+================================================================================
+  Quick Start
+================================================================================
+
+1. Verify all pods are running:
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+2. Check component health:
+   kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} --tail=50
+
+3. Test the API Gateway (after port-forward):
+   curl http://localhost:8080/health
+
+For more information, visit: https://github.com/aisolutionscamp/helm-charts

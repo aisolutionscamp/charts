@@ -1,0 +1,331 @@
+# RAG Stack - Default Values
+# This file contains the default configuration for the RAG stack
+
+# -- Global settings applied to all components
+global:
+  # -- Image pull secrets for private registries
+  imagePullSecrets: []
+  # -- Storage class for persistent volumes
+  storageClass: ""
+
+# =============================================================================
+# QDRANT - Vector Database
+# =============================================================================
+qdrant:
+  # -- Enable Qdrant deployment
+  enabled: true
+  # -- Number of Qdrant replicas
+  replicaCount: 1
+  # -- Qdrant image configuration
+  image:
+    repository: qdrant/qdrant
+    tag: ""
+    pullPolicy: IfNotPresent
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  # -- Persistence configuration
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  # -- Service configuration
+  service:
+    type: ClusterIP
+    port: 6333
+    grpcPort: 6334
+
+# =============================================================================
+# REDIS - Caching Layer
+# =============================================================================
+redis:
+  # -- Enable Redis deployment
+  enabled: true
+  # -- Redis image configuration (official Docker Hub image)
+  image:
+    repository: redis
+    tag: "7.4-alpine"
+    pullPolicy: IfNotPresent
+  # -- Authentication settings
+  auth:
+    # -- Enable Redis authentication
+    enabled: true
+    # -- Existing secret containing Redis password (key: redis-password)
+    existingSecret: ""
+    # -- Redis password (only used if existingSecret is empty, auto-generated if empty)
+    password: ""
+  # -- Redis configuration
+  config:
+    # -- Maximum memory for Redis
+    maxmemory: "256mb"
+    # -- Eviction policy when maxmemory is reached
+    maxmemoryPolicy: "allkeys-lru"
+    # -- Append-only file sync policy (always, everysec, no)
+    appendfsync: "everysec"
+    # -- Log level (debug, verbose, notice, warning)
+    loglevel: "notice"
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # -- Service configuration
+  service:
+    type: ClusterIP
+  # -- Persistence configuration
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  # -- Liveness probe configuration
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # -- Readiness probe configuration
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  # -- Pod annotations
+  podAnnotations: {}
+  # -- Pod security context
+  podSecurityContext:
+    fsGroup: 999
+  # -- Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    allowPrivilegeEscalation: false
+  # -- Node selector
+  nodeSelector: {}
+  # -- Tolerations
+  tolerations: []
+  # -- Affinity rules
+  affinity: {}
+
+# =============================================================================
+# EMBEDDING SERVICE - Custom Component
+# =============================================================================
+embeddingService:
+  # -- Enable Embedding Service deployment
+  enabled: true
+  # -- Number of replicas
+  replicaCount: 1
+  # -- Image configuration
+  image:
+    repository: ghcr.io/aisolutionscamp/embedding-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  # -- Service configuration
+  service:
+    type: ClusterIP
+    port: 8080
+  # -- Embedding model configuration
+  config:
+    # -- Model to use for embeddings
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    # -- Batch size for embedding generation
+    batchSize: 32
+    # -- Maximum sequence length
+    maxLength: 512
+  # -- Environment variables
+  env: []
+  # -- Extra environment variables from secrets/configmaps
+  envFrom: []
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  # -- Pod annotations
+  podAnnotations: {}
+  # -- Pod security context
+  podSecurityContext:
+    fsGroup: 1000
+  # -- Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  # -- Node selector
+  nodeSelector: {}
+  # -- Tolerations
+  tolerations: []
+  # -- Affinity rules
+  affinity: {}
+  # -- Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  # -- Pod Disruption Budget
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# =============================================================================
+# API GATEWAY - Custom Component
+# =============================================================================
+apiGateway:
+  # -- Enable API Gateway deployment
+  enabled: true
+  # -- Number of replicas
+  replicaCount: 1
+  # -- Image configuration
+  image:
+    repository: ghcr.io/aisolutionscamp/rag-api-gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # -- Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # -- Service configuration
+  service:
+    type: ClusterIP
+    port: 8080
+  # -- API Gateway configuration
+  config:
+    # -- Log level
+    logLevel: "info"
+    # -- Request timeout in seconds
+    requestTimeout: 30
+    # -- Maximum request body size
+    maxBodySize: "10m"
+    # -- Rate limiting (requests per minute)
+    rateLimit: 100
+  # -- Environment variables
+  env: []
+  # -- Extra environment variables from secrets/configmaps
+  envFrom: []
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  # -- Pod annotations
+  podAnnotations: {}
+  # -- Pod security context
+  podSecurityContext:
+    fsGroup: 1000
+  # -- Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  # -- Node selector
+  nodeSelector: {}
+  # -- Tolerations
+  tolerations: []
+  # -- Affinity rules
+  affinity: {}
+  # -- Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  # -- Pod Disruption Budget
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# =============================================================================
+# INGRESS - External Access
+# =============================================================================
+ingress:
+  # -- Enable ingress
+  enabled: false
+  # -- Ingress class name
+  className: "nginx"
+  # -- Ingress annotations
+  annotations: {}
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  # -- Ingress hosts configuration
+  hosts:
+    - host: rag.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api-gateway
+  # -- TLS configuration
+  tls: []
+  #  - secretName: rag-tls
+  #    hosts:
+  #      - rag.local
+
+# =============================================================================
+# SERVICE ACCOUNT & RBAC
+# =============================================================================
+serviceAccount:
+  # -- Create service account
+  create: true
+  # -- Service account annotations
+  annotations: {}
+  # -- Service account name (auto-generated if empty)
+  name: ""
+
+rbac:
+  # -- Create RBAC resources
+  create: true
+
+# =============================================================================
+# NETWORK POLICIES
+# =============================================================================
+networkPolicy:
+  # -- Enable network policies
+  enabled: false

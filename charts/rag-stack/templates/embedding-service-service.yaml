@@ -1,0 +1,17 @@
+{{- if .Values.embeddingService.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rag-stack.embeddingService.fullname" . }}
+  labels:
+    {{- include "rag-stack.embeddingService.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.embeddingService.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.embeddingService.service.port | default 8080 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "rag-stack.embeddingService.selectorLabels" . | nindent 4 }}
+{{- end }}

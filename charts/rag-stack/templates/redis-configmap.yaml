@@ -1,0 +1,52 @@
+{{- if .Values.redis.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rag-stack.redis.fullname" . }}
+  labels:
+    {{- include "rag-stack.redis.labels" . | nindent 4 }}
+data:
+  redis.conf: |
+    # Redis configuration
+    bind 0.0.0.0
+    port 6379
+
+    # Memory management
+    maxmemory {{ .Values.redis.config.maxmemory | default "256mb" }}
+    maxmemory-policy {{ .Values.redis.config.maxmemoryPolicy | default "allkeys-lru" }}
+
+    # Persistence
+    {{- if .Values.redis.persistence.enabled }}
+    appendonly yes
+    appendfsync {{ .Values.redis.config.appendfsync | default "everysec" }}
+    dir /data
+    {{- else }}
+    appendonly no
+    save ""
+    {{- end }}
+
+    # Security
+    {{- if .Values.redis.auth.enabled }}
+    requirepass REDIS_PASSWORD_PLACEHOLDER
+    {{- end }}
+
+    # Performance
+    tcp-keepalive 300
+    timeout 0
+
+    # Logging
+    loglevel {{ .Values.redis.config.loglevel | default "notice" }}
+
+  start-redis.sh: |
+    #!/bin/sh
+    set -e
+
+    # Replace password placeholder with actual password
+    if [ -n "$REDIS_PASSWORD" ]; then
+      sed "s/REDIS_PASSWORD_PLACEHOLDER/$REDIS_PASSWORD/g" /config/redis.conf > /tmp/redis.conf
+    else
+      grep -v "requirepass" /config/redis.conf > /tmp/redis.conf
+    fi
+
+    exec redis-server /tmp/redis.conf
+{{- end }}
