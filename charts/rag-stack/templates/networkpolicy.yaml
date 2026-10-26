@@ -1,0 +1,61 @@
+{{- /*
+Qdrant and Ollama accept connections only from rag-api and from pods of the
+same component (Qdrant peers, the subcharts' helm test pods).
+*/}}
+{{- if .Values.networkPolicy.enabled }}
+{{- if .Values.qdrant.enabled }}
+{{- $qdrant := dict "app.kubernetes.io/name" (.Values.qdrant.nameOverride | default "qdrant") "app.kubernetes.io/instance" .Release.Name }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rag-stack.qdrantFullname" . }}-netpol
+  labels:
+    {{- include "rag-stack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml $qdrant | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "rag-stack.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml $qdrant | nindent 14 }}
+      ports:
+        - port: 6333
+          protocol: TCP
+        - port: 6334
+          protocol: TCP
+        - port: 6335
+          protocol: TCP
+{{- end }}
+{{- if .Values.ollama.enabled }}
+{{- $ollama := dict "app.kubernetes.io/name" (.Values.ollama.nameOverride | default "ollama") "app.kubernetes.io/instance" .Release.Name }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rag-stack.ollamaFullname" . }}-netpol
+  labels:
+    {{- include "rag-stack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml $ollama | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "rag-stack.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml $ollama | nindent 14 }}
+      ports:
+        - port: {{ .Values.ollama.ollama.port | default 11434 }}
+          protocol: TCP
+{{- end }}
+{{- end }}

@@ -4,37 +4,27 @@ Production-ready Helm charts for AI/ML stacks. One-shot installation with sensib
 
 ## Available Charts
 
-| Chart | Description | Status |
-|-------|-------------|--------|
-| [rag-stack](./charts/rag-stack) | RAG stack with Qdrant, Redis, Embedding Service, API Gateway | Ready |
-| [local-llm-stack](./charts/local-llm-stack) | Local LLM with Ollama, Open WebUI, API Gateway | Planned |
-| [ai-agent-stack](./charts/ai-agent-stack) | AI Agent with PostgreSQL, Redis, Agent Runtime | Planned |
+| Chart | Description |
+|-------|-------------|
+| [rag-stack](./charts/rag-stack) | Retrieval-augmented generation: Qdrant, Ollama and the rag-api service ([source](https://github.com/aisolutionscamp/stacks/tree/main/stacks/rag-pipeline)) |
+
+The other stacks on [aisolutionscamp.io](https://aisolutionscamp.io/stacks) use maintained upstream charts; their Helm setup lives in [aisolutionscamp/stacks](https://github.com/aisolutionscamp/stacks).
 
 ## Quick Start
 
 ```bash
-# Add the Helm repository
-helm repo add aisolutionscamp https://aisolutionscamp.github.io/helm-charts
+helm repo add aisolutionscamp https://aisolutionscamp.github.io/charts
 helm repo update
-
-# Install RAG Stack
-helm install my-rag aisolutionscamp/rag-stack -n rag-system --create-namespace
+helm install rag aisolutionscamp/rag-stack -n rag --create-namespace
 ```
 
 ## Installation from Source
 
 ```bash
-# Clone the repository
-git clone https://github.com/aisolutionscamp/helm-charts.git
-cd helm-charts
-
-# Add required repositories
-helm repo add qdrant https://qdrant.github.io/qdrant-helm
-helm repo update
-
-# Build dependencies and install
+git clone https://github.com/aisolutionscamp/charts.git
+cd charts
 helm dependency build charts/rag-stack
-helm install my-rag charts/rag-stack -n rag-system --create-namespace
+helm install rag charts/rag-stack -n rag --create-namespace
 ```
 
 ## Configuration
@@ -44,14 +34,13 @@ Each chart has comprehensive configuration options. See the `values.yaml` in eac
 ### Example: RAG Stack with custom settings
 
 ```bash
-helm install my-rag charts/rag-stack \
+helm install rag aisolutionscamp/rag-stack \
   --set qdrant.persistence.size=50Gi \
-  --set redis.persistence.size=5Gi \
-  --set embeddingService.autoscaling.enabled=true \
   --set ingress.enabled=true \
-  --set ingress.hosts[0].host=rag.example.com \
-  -n rag-system --create-namespace
+  -n rag --create-namespace
 ```
+
+See [charts/rag-stack/README.md](./charts/rag-stack/README.md) for all values.
 
 ## License
 

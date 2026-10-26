@@ -1,0 +1,25 @@
+# Values for chart-testing (ct install on kind): tiny models, small volumes.
+ragApi:
+  config:
+    embedModel: "all-minilm:22m"
+    chatModel: "qwen2.5:0.5b"
+    collection: ci
+qdrant:
+  # Fixed throwaway key for ct install: the Qdrant chart's helm test sends the
+  # literal apiKey value, so it fails with the default apiKey: true.
+  apiKey: "ci-only-not-a-secret-0123456789"
+  persistence:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+ollama:
+  persistentVolume:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 3Gi

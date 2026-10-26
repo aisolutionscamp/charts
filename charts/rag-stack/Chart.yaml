@@ -1,30 +1,45 @@
 apiVersion: v2
 name: rag-stack
-description: A production-ready RAG (Retrieval-Augmented Generation) stack with Qdrant, Redis, Embedding Service, and API Gateway
+description: >-
+  Retrieval-augmented generation on your own cluster: Qdrant (vector store),
+  Ollama (embeddings and chat model) and rag-api (ingest and query HTTP API).
 type: application
-version: 0.1.0
+version: 1.0.0
 appVersion: "1.0.0"
+kubeVersion: ">=1.25.0-0"
 keywords:
   - rag
-  - ai
-  - ml
-  - vector-database
+  - retrieval-augmented-generation
   - qdrant
-  - redis
-  - embedding
+  - ollama
+  - vector-database
   - llm
-home: https://github.com/aisolutionscamp/helm-charts
+home: https://github.com/aisolutionscamp/charts/tree/main/charts/rag-stack
 sources:
-  - https://github.com/aisolutionscamp/helm-charts
+  - https://github.com/aisolutionscamp/charts
+  - https://github.com/aisolutionscamp/stacks/tree/main/stacks/rag-pipeline
 maintainers:
   - name: AI Solutions Camp
     url: https://github.com/aisolutionscamp
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/category: ai-machine-learning
-
+  artifacthub.io/changes: |
+    - kind: changed
+      description: "Breaking: the chart now deploys Qdrant, Ollama and rag-api. Redis, the embedding service and the API gateway were removed."
+  artifacthub.io/images: |
+    - name: rag-api
+      image: ghcr.io/aisolutionscamp/rag-api:1.0.0
+    - name: qdrant
+      image: docker.io/qdrant/qdrant:v1.20.0
+    - name: ollama
+      image: ollama/ollama:0.40.11
 dependencies:
   - name: qdrant
-    version: "0.9.*"
+    version: "1.20.0"
     repository: "https://qdrant.github.io/qdrant-helm"
     condition: qdrant.enabled
+  - name: ollama
+    version: "1.92.0"
+    repository: "https://otwld.github.io/ollama-helm"
+    condition: ollama.enabled

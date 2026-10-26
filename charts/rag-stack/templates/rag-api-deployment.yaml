@@ -1,0 +1,131 @@
+{{- $cfg := .Values.ragApi.config }}
+{{- if ge (int $cfg.chunkOverlap) (int $cfg.chunkSize) }}
+{{- fail "ragApi.config.chunkOverlap must be smaller than ragApi.config.chunkSize" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rag-stack.ragApiName" . }}
+  labels:
+    {{- include "rag-stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ragApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rag-stack.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rag-stack.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- /* Restart pods when the API key setting changes (not on every render of a generated key). */}}
+        checksum/api-key: {{ printf "%v/%s/%s" .Values.ragApi.auth.enabled (include "rag-stack.apiKeySecretName" .) .Values.ragApi.auth.apiKey | sha256sum }}
+        {{- with .Values.ragApi.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "rag-stack.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.ragApi.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.ragApi.podSecurityContext | nindent 8 }}
+      containers:
+        - name: rag-api
+          image: "{{ .Values.ragApi.image.repository }}:{{ .Values.ragApi.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ragApi.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.ragApi.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: OLLAMA_URL
+              value: {{ include "rag-stack.ollamaUrl" . | quote }}
+            - name: QDRANT_URL
+              value: {{ include "rag-stack.qdrantUrl" . | quote }}
+            {{- $qdrantSecret := include "rag-stack.qdrantSecretName" . }}
+            {{- if $qdrantSecret }}
+            - name: QDRANT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $qdrantSecret }}
+                  key: {{ .Values.ragApi.qdrantApiKey.secretKey }}
+            {{- end }}
+            {{- if .Values.ragApi.auth.enabled }}
+            - name: RAG_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rag-stack.apiKeySecretName" . }}
+                  key: {{ .Values.ragApi.auth.secretKey }}
+            {{- end }}
+            - name: QDRANT_COLLECTION
+              value: {{ $cfg.collection | quote }}
+            - name: EMBED_MODEL
+              value: {{ $cfg.embedModel | quote }}
+            - name: CHAT_MODEL
+              value: {{ $cfg.chatModel | quote }}
+            - name: PULL_MODELS
+              value: {{ $cfg.pullModels | quote }}
+            - name: CHUNK_SIZE
+              value: {{ $cfg.chunkSize | quote }}
+            - name: CHUNK_OVERLAP
+              value: {{ $cfg.chunkOverlap | quote }}
+            - name: TOP_K
+              value: {{ $cfg.topK | quote }}
+            - name: MAX_UPLOAD_MB
+              value: {{ $cfg.maxUploadMb | quote }}
+            - name: LLM_TIMEOUT
+              value: {{ $cfg.llmTimeout | quote }}
+            - name: LLM_TEMPERATURE
+              value: {{ $cfg.temperature | quote }}
+            - name: LOG_LEVEL
+              value: {{ $cfg.logLevel | quote }}
+            {{- with .Values.ragApi.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.ragApi.startupProbe.periodSeconds }}
+            failureThreshold: {{ .Values.ragApi.startupProbe.failureThreshold }}
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.ragApi.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.ragApi.readinessProbe.failureThreshold }}
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: {{ .Values.ragApi.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.ragApi.livenessProbe.failureThreshold }}
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.ragApi.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Uploads larger than 1 MB are buffered in /tmp.
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.ragApi.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ragApi.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ragApi.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

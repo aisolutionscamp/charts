@@ -34,9 +34,8 @@ ct lint --config ct.yaml
 
 ```
 charts/
-├── rag-stack/           # RAG stack: Qdrant + Redis + Embedding Service + API Gateway
-├── local-llm-stack/     # Local LLM: Ollama + Open WebUI + API Gateway
-└── ai-agent-stack/      # AI Agent: PostgreSQL + Redis + Agent Runtime + Tool Executor
+└── rag-stack/           # RAG stack: Qdrant (subchart) + Ollama (otwld subchart) + rag-api
+                         # rag-api image: ghcr.io/aisolutionscamp/rag-api, source in aisolutionscamp/stacks
 
 .github/workflows/
 ├── lint.yaml            # Chart linting with chart-testing
@@ -64,5 +63,4 @@ Each chart follows the umbrella chart pattern:
 ## Important
 
 - Do not use Bitnami charts or images (Broadcom licensing). Use official Docker Hub images with custom templates instead.
-- Redis: `redis:7.4-alpine` (official image)
-- PostgreSQL: `postgres:16-alpine` (official image)
+- Prefer official images; pin exact tags.

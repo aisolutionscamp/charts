@@ -6,7 +6,7 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
+Fully qualified app name.
 */}}
 {{- define "rag-stack.fullname" -}}
 {{- if .Values.fullnameOverride }}
@@ -21,183 +21,99 @@ Create a default fully qualified app name.
 {{- end }}
 {{- end }}
 
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
 {{- define "rag-stack.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Common labels
-*/}}
 {{- define "rag-stack.labels" -}}
 helm.sh/chart: {{ include "rag-stack.chart" . }}
 {{ include "rag-stack.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/*
-Selector labels
-*/}}
 {{- define "rag-stack.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "rag-stack.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: rag-api
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Name of the rag-api resources: <release>-rag-api, or <fullnameOverride>-api.
 */}}
+{{- define "rag-stack.ragApiName" -}}
+{{- if .Values.fullnameOverride }}
+{{- printf "%s-api" .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-rag-api" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
 {{- define "rag-stack.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "rag-stack.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "rag-stack.ragApiName" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 
 {{/*
-Embedding Service fullname
+Names of the subchart resources (same logic as the subcharts' fullname helpers).
 */}}
-{{- define "rag-stack.embeddingService.fullname" -}}
-{{- printf "%s-embedding-service" (include "rag-stack.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Embedding Service labels
-*/}}
-{{- define "rag-stack.embeddingService.labels" -}}
-{{ include "rag-stack.labels" . }}
-app.kubernetes.io/component: embedding-service
-{{- end }}
-
-{{/*
-Embedding Service selector labels
-*/}}
-{{- define "rag-stack.embeddingService.selectorLabels" -}}
-{{ include "rag-stack.selectorLabels" . }}
-app.kubernetes.io/component: embedding-service
-{{- end }}
-
-{{/*
-API Gateway fullname
-*/}}
-{{- define "rag-stack.apiGateway.fullname" -}}
-{{- printf "%s-api-gateway" (include "rag-stack.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-API Gateway labels
-*/}}
-{{- define "rag-stack.apiGateway.labels" -}}
-{{ include "rag-stack.labels" . }}
-app.kubernetes.io/component: api-gateway
-{{- end }}
-
-{{/*
-API Gateway selector labels
-*/}}
-{{- define "rag-stack.apiGateway.selectorLabels" -}}
-{{ include "rag-stack.selectorLabels" . }}
-app.kubernetes.io/component: api-gateway
-{{- end }}
-
-{{/*
-Return the Qdrant host
-*/}}
-{{- define "rag-stack.qdrantHost" -}}
-{{- if .Values.qdrant.enabled }}
-{{- printf "%s-qdrant" .Release.Name }}
+{{- define "rag-stack.subchartFullname" -}}
+{{- $ctx := index . 0 }}{{- $name := index . 1 }}{{- $values := index . 2 }}
+{{- if $values.fullnameOverride }}
+{{- $values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- .Values.externalQdrant.host }}
-{{- end }}
-{{- end }}
-
-{{/*
-Return the Qdrant port
-*/}}
-{{- define "rag-stack.qdrantPort" -}}
-{{- if .Values.qdrant.enabled }}
-{{- .Values.qdrant.service.port | default 6333 }}
+{{- $n := default $name $values.nameOverride }}
+{{- if contains $n $ctx.Release.Name }}
+{{- $ctx.Release.Name | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- .Values.externalQdrant.port | default 6333 }}
+{{- printf "%s-%s" $ctx.Release.Name $n | trunc 63 | trimSuffix "-" }}
 {{- end }}
 {{- end }}
-
-{{/*
-Redis fullname
-*/}}
-{{- define "rag-stack.redis.fullname" -}}
-{{- printf "%s-redis" (include "rag-stack.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Redis labels
-*/}}
-{{- define "rag-stack.redis.labels" -}}
-{{ include "rag-stack.labels" . }}
-app.kubernetes.io/component: redis
+{{- define "rag-stack.qdrantFullname" -}}
+{{- include "rag-stack.subchartFullname" (list . "qdrant" .Values.qdrant) }}
 {{- end }}
 
-{{/*
-Redis selector labels
-*/}}
-{{- define "rag-stack.redis.selectorLabels" -}}
-{{ include "rag-stack.selectorLabels" . }}
-app.kubernetes.io/component: redis
+{{- define "rag-stack.ollamaFullname" -}}
+{{- include "rag-stack.subchartFullname" (list . "ollama" .Values.ollama) }}
 {{- end }}
 
-{{/*
-Return the Redis host
-*/}}
-{{- define "rag-stack.redisHost" -}}
-{{- if .Values.redis.enabled }}
-{{- include "rag-stack.redis.fullname" . }}
+{{- define "rag-stack.qdrantUrl" -}}
+{{- if .Values.ragApi.qdrantUrl }}
+{{- .Values.ragApi.qdrantUrl }}
+{{- else if .Values.qdrant.enabled }}
+{{- printf "http://%s:6333" (include "rag-stack.qdrantFullname" .) }}
 {{- else }}
-{{- .Values.externalRedis.host }}
+{{- fail "qdrant.enabled is false: set ragApi.qdrantUrl" }}
 {{- end }}
 {{- end }}
 
-{{/*
-Return the Redis port
-*/}}
-{{- define "rag-stack.redisPort" -}}
-{{- if .Values.redis.enabled }}
-{{- 6379 }}
+{{- define "rag-stack.ollamaUrl" -}}
+{{- if .Values.ragApi.ollamaUrl }}
+{{- .Values.ragApi.ollamaUrl }}
+{{- else if .Values.ollama.enabled }}
+{{- printf "http://%s:%v" (include "rag-stack.ollamaFullname" .) (.Values.ollama.service.port | default 11434) }}
 {{- else }}
-{{- .Values.externalRedis.port | default 6379 }}
+{{- fail "ollama.enabled is false: set ragApi.ollamaUrl" }}
 {{- end }}
 {{- end }}
 
 {{/*
-Return the Redis secret name
+Secret with the Qdrant API key: the bundled Qdrant's Secret unless one is given.
+Empty when Qdrant runs without an API key.
 */}}
-{{- define "rag-stack.redis.secretName" -}}
-{{- if .Values.redis.auth.existingSecret }}
-{{- .Values.redis.auth.existingSecret }}
-{{- else }}
-{{- include "rag-stack.redis.fullname" . }}
+{{- define "rag-stack.qdrantSecretName" -}}
+{{- if .Values.ragApi.qdrantApiKey.secretName }}
+{{- .Values.ragApi.qdrantApiKey.secretName }}
+{{- else if and .Values.qdrant.enabled (or .Values.qdrant.apiKey .Values.qdrant.readOnlyApiKey) }}
+{{- printf "%s-apikey" (include "rag-stack.qdrantFullname" .) }}
 {{- end }}
 {{- end }}
 
-{{/*
-Return the Redis secret name (alias for backwards compatibility)
-*/}}
-{{- define "rag-stack.redisSecretName" -}}
-{{- include "rag-stack.redis.secretName" . }}
-{{- end }}
-
-{{/*
-Image pull secrets
-*/}}
-{{- define "rag-stack.imagePullSecrets" -}}
-{{- if .Values.global.imagePullSecrets }}
-imagePullSecrets:
-{{- range .Values.global.imagePullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- end }}
+{{- define "rag-stack.apiKeySecretName" -}}
+{{- default (include "rag-stack.ragApiName" .) .Values.ragApi.auth.existingSecret }}
 {{- end }}
