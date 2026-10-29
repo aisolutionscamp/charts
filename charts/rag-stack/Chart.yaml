@@ -4,8 +4,8 @@ description: >-
   Retrieval-augmented generation on your own cluster: Qdrant (vector store),
   Ollama (embeddings and chat model) and rag-api (ingest and query HTTP API).
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.0.1
+appVersion: "1.0.1"
 kubeVersion: ">=1.25.0-0"
 keywords:
   - rag
@@ -29,7 +29,7 @@ annotations:
       description: "Breaking: the chart now deploys Qdrant, Ollama and rag-api. Redis, the embedding service and the API gateway were removed."
   artifacthub.io/images: |
     - name: rag-api
-      image: ghcr.io/aisolutionscamp/rag-api:1.0.0
+      image: ghcr.io/aisolutionscamp/rag-api:1.0.1
     - name: qdrant
       image: docker.io/qdrant/qdrant:v1.20.0
     - name: ollama

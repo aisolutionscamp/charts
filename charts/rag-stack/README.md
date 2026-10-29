@@ -15,7 +15,7 @@ The same stack as Docker Compose, Terraform and AWS: [aisolutionscamp/stacks, ra
 ```bash
 helm repo add aisolutionscamp https://aisolutionscamp.github.io/charts
 helm repo update aisolutionscamp
-helm upgrade --install rag aisolutionscamp/rag-stack --version 1.0.0 -n rag --create-namespace
+helm upgrade --install rag aisolutionscamp/rag-stack --version 1.0.1 -n rag --create-namespace
 kubectl -n rag rollout status deploy/rag-rag-api --timeout=30m   # first start pulls the models
 ```
 
